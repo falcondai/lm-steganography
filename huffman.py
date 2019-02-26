@@ -114,17 +114,21 @@ def decode(code_tree, encoded):
     while not (len(codes) == 0 and type(state) is tuple):
         if type(state) is tuple:
             # An internal node
-            code = codes.pop(0)
+            left, right = state
+            try:
+                code = codes.pop(0)
+            except IndexError:
+                raise Exception('Decoder should stop at the end of the encoded string. The string may not be encoded by the specified Huffman coding.')
             if code == 'l':
                 # Go left
-                state = state[0]
+                state = left
             else:
                 # Go right
-                state = state[1]
+                state = right
         else:
             # A leaf node, decode a letter
             decoded.append(state)
-            # Reset state
+            # Reset decoder state
             state = code_tree
     return decoded
 
