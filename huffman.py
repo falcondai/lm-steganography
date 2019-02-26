@@ -3,9 +3,11 @@ import heapq
 import numpy as np
 
 
-def build_min_heap(freqs):
+def build_min_heap(freqs, inds=None):
     '''Returns a min-heap of (frequency, token_index).'''
-    freq_index = [(freq, i) for i, freq in enumerate(freqs)]
+    inds = inds or range(len(freqs))
+    # Add a counter in tuples for tiebreaking
+    freq_index = [(freqs[ind], i, ind) for i, ind in enumerate(inds)]
     # O(n log n) where n = len(freqs)
     heapq.heapify(freq_index)
     return freq_index
@@ -13,34 +15,39 @@ def build_min_heap(freqs):
 
 def huffman_tree(heap):
     '''Returns the Huffman tree given a min-heap of indices and frequencies.'''
+    # Add a counter in tuples for tiebreaking
+    t = len(heap)
     # Runs for n iterations where n = len(heap)
     while len(heap) > 1:
         # Remove the smallest two nodes. O(log n)
-        freq1, ind1 = heapq.heappop(heap)
-        freq2, ind2 = heapq.heappop(heap)
+        freq1, i1, ind1 = heapq.heappop(heap)
+        freq2, i2, ind2 = heapq.heappop(heap)
         # Create a parent node for these two nodes
         parent_freq = freq1 + freq2
         # The left child is the one with the lowest frequency
         parent_ind = (ind1, ind2)
         # Insert this parent node. O(log n)
-        # FIXME in the rare case of equal frequencies, tuple comparison will fail
-        # TODO add an second element in tuple for tiebreaking
-        heapq.heappush(heap, (parent_freq, parent_ind))
-    code_tree = heap[0][1]
+        heapq.heappush(heap, (parent_freq, t, parent_ind))
+        t += 1
+    code_tree = heap[0][2]
     # Total runtime O(n log n).
     return code_tree
 
 
 def tv_huffman(code_tree, p):
-    '''Returns the total variation between a distribution over tokens
-    and the distribution induced by a Huffman coding of the tokens.
+    '''Returns the total variation between a distribution over tokens and the
+    distribution induced by a Huffman coding of (a subset of) the tokens.
+
     Args:
         code_tree : tuple.
-            Huffman codes as represented by a binary tree.
+            Huffman codes as represented by a binary tree. It might miss some
+            tokens.
         p : array of size of the vocabulary.
-            The distribution over tokens.
+            The distribution over all tokens.
     '''
     tot_l1 = 0
+    # The tokens absent in the Huffman codes have probability 0
+    absence = np.ones_like(p)
     # tot_ce = 0
     # Iterate leaves of the code tree. O(n)
     stack = []
@@ -56,10 +63,13 @@ def tv_huffman(code_tree, p):
             stack.append((right_child, depth + 1))
         else:
             # A leaf node
-            tot_l1 += abs(p[node] - 2 ** (-depth))
-            # tot_ce += p[node] * depth
+            ind = node
+            tot_l1 += abs(p[ind] - 2 ** (-depth))
+            absence[ind] = 0
+            # tot_ce += p[ind] * depth
     # Returns total variation
-    return 0.5 * tot_l1
+    print('abs', absence, absence * p, tot_l1)
+    return 0.5 * (tot_l1 + np.sum(absence * p))
 
 
 def total_variation(p, q):
@@ -120,20 +130,20 @@ def decode(code_tree, encoded):
 
 
 if __name__ == '__main__':
-    v = 100
+    v = 5
     p = np.random.dirichlet([1] * v)
     print(sum(p))
-    # p = [0.8, 0.05, 0.11, 0.049]
-    heap = build_min_heap(p)
+    p = [0.7, 0.1, 0.05, 0.1, 0.05]
+    heap = build_min_heap(p, [0, 1, 2, 4])
     print(heap)
 
     tree = huffman_tree(heap)
     print(tree)
-    # print(huffman_tree(build_min_heap([1, 1, 1, 1, 1, 1])))
     print(tv_huffman(tree, p))
     print(invert_code_tree(tree))
 
-    string = np.random.choice(v, 10, p=p)
+    # string = np.random.choice(v, 10, p=p)
+    string = [0, 0, 2, 4, 1, 0, 2, 2]
     print(list(string))
     codes = encode(tree, string)
     print(codes)
