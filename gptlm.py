@@ -22,7 +22,7 @@ class GptLanguageModel(LanguageModel):
 
         self.nsamples = nsamples
         base_path = "./external/gpt-2/"
-        self.enc = encoder.get_encoder(model_name)
+        self.enc = encoder.get_encoder_custom(model_name)
         self.hparams = model.default_hparams()
         with open(os.path.join(base_path, 'models', model_name, 'hparams.json')) as f:
             self.hparams.override_from_dict(json.load(f))
