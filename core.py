@@ -1,29 +1,7 @@
 import numpy as np
 
 from huffman import build_min_heap, huffman_tree, tv_huffman
-
-
-class LanguageModel:
-    '''
-    Abstraction for prefix language models
-    p(sentence) = p(next token|prefix) p(prefix)
-    '''
-
-    def __init__(self, vocabulary, SOS_ind, EOS_ind):
-        self.SOS_ind = SOS_ind
-        self.EOS_ind = EOS_ind
-        # Mapping from indices to tokens
-        self.vocabulary = vocabulary
-        self.vocabulary_size = len(self.vocabulary)
-
-    def p_next_token(self, prefix):
-        '''Returns the distribution over the next token given the prefix
-        represented by a list of indices.'''
-        raise NotImplementedError()
-
-    def perplexity(self, sentence):
-        '''Returns -log p(sentence)'''
-        raise NotImplementedError()
+from lm import LanguageModel
 
 
 class LmAdversary:
@@ -62,13 +40,24 @@ class Sender:
     def hide(self, cipher_text):
         '''We use the cipher text to control the forward sampling procedure
         in sampling tokens from the prefix language model.'''
+        stego_text = []
+        while len(cipher_text) > 0:
+            inds = self.control_sample(cipher_text)
+            # Look up the tokens
+            stego_text += [self.lm.vocabulary[ind] for ind in inds]
+        return stego_text
+
+    def control_sample(self, coin_flips):
+        '''We use a sequence of coin flips to control the generation of token
+        indices from a language model. This returns _a sequence_ as defined by
+        the model, e.g. sentence, paragraph.'''
         ind = self.lm.SOS_ind
         prefix = [ind]
         p = self.lm.p_next_token(prefix)
         # Terminate the generation after we generate the EOS token
         while ind != self.lm.EOS_ind:
             # There is still some cipher text to hide
-            le = len(cipher_text)
+            le = len(coin_flips)
             if le > 0:
                 # Build Huffman codes for the conditional distribution
                 # if 2 ** le < self.lm.vocabulary_size:
@@ -87,7 +76,7 @@ class Sender:
                     while type(decoder_state) is tuple:
                         left, right = decoder_state
                         try:
-                            bit = cipher_text.pop(0)
+                            bit = coin_flips.pop(0)
                         except IndexError:
                             # No more cipher text. Pad with random bits
                             bit = self.random.choice(2)
@@ -102,10 +91,8 @@ class Sender:
             ind = self.random.choice(self.lm.vocabulary_size, p=p)
             prefix.append(ind)
             p = self.lm.p_next_token(prefix)
-        # Look up the tokens
-        stego_text = [self.lm.vocabulary[ind] for ind in prefix]
-        # Dropping the EOS
-        return stego_text[:-1]
+        # Drop the EOS index
+        return prefix[:1]
 
 
 class Receiver:
@@ -127,11 +114,8 @@ class Receiver:
         return plain_text
 
     def seek(self, stego_text):
-        '''Seek the cipher text from stego text by following the same sampling procedure.'''
-
-
-class TfLanguageModel(LanguageModel):
-    pass
+        '''Seek the hidden cipher text from the given stego text by following
+        the same sampling procedure.'''
 
 
 if __name__ == '__main__':
