@@ -22,7 +22,7 @@ class GptLanguageModel(LanguageModel):
 
         self.nsamples = nsamples
         base_path = "./external/gpt-2/"
-        self.enc = encoder.get_encoder_custom(model_name)
+        self.enc = encoder.get_encoder_custom(base_path, model_name)
         self.hparams = model.default_hparams()
         with open(os.path.join(base_path, 'models', model_name, 'hparams.json')) as f:
             self.hparams.override_from_dict(json.load(f))
@@ -30,28 +30,27 @@ class GptLanguageModel(LanguageModel):
         if length is None:
             self.length = self.hparams.n_ctx // 2
         elif length > self.hparams.n_ctx:
-            raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
+            raise ValueError("Can't get samples longer than window size: %s" % self.hparams.n_ctx)
 
         self.sess = tf.Session()
         self.context = tf.placeholder(tf.int32, [batch_size, None])
         np.random.seed(seed)
         tf.set_random_seed(seed)
-        
+
         self.lm_output = model.model(hparams=self.hparams, X=self.context[:, :-1], past=None, reuse=tf.AUTO_REUSE)
-        
+
         saver = tf.train.Saver()
         ckpt = tf.train.latest_checkpoint(os.path.join(base_path, 'models', model_name))
         saver.restore(self.sess, ckpt)
-    
-    def p_next_token(self, prefix):
 
-        raw_text = prefix
-        if not raw_text:
-            print('Prompt should not be empty!')
-            raise ValueError("must have prefix tokens.") 
-        context_tokens = self.enc.encode(raw_text)
-        print(context_tokens)
-        context_tk_reshape = np.asarray(context_tokens).reshape((self.batch_size, -1)) 
+    def p_next_token(self, prefix):
+        # raw_text = prefix
+        # if not raw_text:
+        #     print('Prompt should not be empty!')
+        #     raise ValueError("must have prefix tokens.")
+        context_tokens = prefix
+        print('prefix', context_tokens)
+        context_tk_reshape = np.asarray(context_tokens).reshape((self.batch_size, -1))
 
         out = self.sess.run(self.lm_output, feed_dict={
                 self.context: context_tk_reshape})
@@ -63,7 +62,7 @@ class GptLanguageModel(LanguageModel):
         sent_tokens = self.enc.encode(sentence)
         sent_reshape = np.asarray(sent_tokens).reshape((self.batch_size, -1))
         context = np.concatenate([sos_padding, sent_reshape], axis = 1)
-        
+
         out = self.sess.run(self.lm_output, feed_dict={self.context: context})
         # logits should have shape [batch_size, length]
         ppl = tf.nn.softmax_cross_entropy_with_logits_v2(
@@ -71,3 +70,9 @@ class GptLanguageModel(LanguageModel):
                 logits = out['logits']
             )
         return ppl
+
+
+if __name__ == '__main__':
+    # Example
+    lm = GptLanguageModel()
+    print(lm.p_next_token([lm.SOS]))
