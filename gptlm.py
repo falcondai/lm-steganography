@@ -37,7 +37,7 @@ class GptLanguageModel(LanguageModel):
         np.random.seed(seed)
         tf.set_random_seed(seed)
 
-        self.lm_output = model.model(hparams=self.hparams, X=self.context[:, :-1], past=None, reuse=tf.AUTO_REUSE)
+        self.lm_output = model.model(hparams=self.hparams, X=self.context[:, :], past=None, reuse=tf.AUTO_REUSE)
 
         saver = tf.train.Saver()
         ckpt = tf.train.latest_checkpoint(os.path.join(base_path, 'models', model_name))
@@ -55,7 +55,7 @@ class GptLanguageModel(LanguageModel):
         out = self.sess.run(self.lm_output, feed_dict={
                 self.context: context_tk_reshape})
         p_next_tk = out['logits']
-        return p_next_tk
+        return p_next_tk[0, -1]
 
     def perplexity(self, sentence):
         sos_padding = np.array([self.SOS for i in range(self.batch_size)]).reshape((self.batch_size, -1))
@@ -74,21 +74,34 @@ class GptLanguageModel(LanguageModel):
 
 if __name__ == '__main__':
     def entropy(logits):
-        p = np.exp(logits)
-        return np.sum(p * np.log(p))
+        max_logit = logits.max()
+        p = np.exp(logits - max_logit)
+        p = p / p.sum()
+        return -np.sum(p * np.log2(p))
 
     # Example
     lm = GptLanguageModel()
-    print(lm.p_next_token([lm.SOS]))
+    prefix = [lm.SOS]
+    logits = lm.p_next_token(prefix)
+    print(logits)
+    i = logits.argmax()
+    print(logits[i], lm.enc.decoder[i])
+    print(entropy(logits))
 
     # High entropy for some prefixes
-    i_have_a_ = lm.enc.encode('I have a ')
-    logits = lm.p_next_token(i_have_a_)
+    i_have_a_lot = lm.enc.encode('I have a lot')
+    logits = lm.p_next_token(i_have_a_lot)
+    print(logits.shape)
     print(logits)
+    i = logits.argmax()
+    print(logits[i], lm.enc.decoder[i])
     print(entropy(logits))
 
     # Low entropy for other prefixes
-    the_capital_of_us_is_ = lm.enc.encode('The capital of US is ')
-    logits = lm.p_next_token(the_capital_of_us_is_)
+    the_capital_of_us_is = lm.enc.encode('The capital of USA is')
+    logits = lm.p_next_token(the_capital_of_us_is)
+    print(logits.shape)
     print(logits)
+    i = logits.argmax()
+    print(logits[i], lm.enc.decoder[i])
     print(entropy(logits))
