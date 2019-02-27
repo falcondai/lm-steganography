@@ -48,7 +48,7 @@ def tv_huffman(code_tree, p):
     tot_l1 = 0
     # The tokens absent in the Huffman codes have probability 0
     absence = np.ones_like(p)
-    # tot_ce = 0
+    tot_ce = 0
     # Iterate leaves of the code tree. O(n)
     stack = []
     # Push the root and its depth onto the stack
@@ -66,10 +66,10 @@ def tv_huffman(code_tree, p):
             ind = node
             tot_l1 += abs(p[ind] - 2 ** (-depth))
             absence[ind] = 0
-            # tot_ce += p[ind] * depth
+            # The KL divergence of true distribution || Huffman distribution
+            tot_ce += p[ind] * depth + p[ind] * np.log2(p[ind])
     # Returns total variation
-    print('abs', absence, absence * p, tot_l1)
-    return 0.5 * (tot_l1 + np.sum(absence * p))
+    return 0.5 * (tot_l1 + np.sum(absence * p)), tot_ce
 
 
 def total_variation(p, q):
@@ -134,20 +134,21 @@ def decode(code_tree, encoded):
 
 
 if __name__ == '__main__':
-    v = 5
+    v = 256 ** 2
     p = np.random.dirichlet([1] * v)
     print(sum(p))
-    p = [0.7, 0.1, 0.05, 0.1, 0.05]
-    heap = build_min_heap(p, [0, 1, 2, 4])
-    print(heap)
+    # p = [0.7, 0.1, 0.05, 0.1, 0.05]
+    # heap = build_min_heap(p, [0, 1, 2, 4])
+    heap = build_min_heap(p)
+    # print(heap)
 
     tree = huffman_tree(heap)
-    print(tree)
+    # print(tree)
     print(tv_huffman(tree, p))
-    print(invert_code_tree(tree))
+    # print(invert_code_tree(tree))
 
-    # string = np.random.choice(v, 10, p=p)
-    string = [0, 0, 2, 4, 1, 0, 2, 2]
+    string = np.random.choice(v, 10, p=p)
+    # string = [0, 0, 2, 4, 1, 0, 2, 2]
     print(list(string))
     codes = encode(tree, string)
     print(codes)

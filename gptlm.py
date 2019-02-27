@@ -73,6 +73,22 @@ class GptLanguageModel(LanguageModel):
 
 
 if __name__ == '__main__':
+    def entropy(logits):
+        p = np.exp(logits)
+        return np.sum(p * np.log(p))
+
     # Example
     lm = GptLanguageModel()
     print(lm.p_next_token([lm.SOS]))
+
+    # High entropy for some prefixes
+    i_have_a_ = lm.enc.encode('I have a ')
+    logits = lm.p_next_token(i_have_a_)
+    print(logits)
+    print(entropy(logits))
+
+    # Low entropy for other prefixes
+    the_capital_of_us_is_ = lm.enc.encode('The capital of US is ')
+    logits = lm.p_next_token(the_capital_of_us_is_)
+    print(logits)
+    print(entropy(logits))
