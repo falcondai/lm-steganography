@@ -1,3 +1,3 @@
 [submodule "external/gpt-2"]
 	path = external/gpt-2
-	url = git@github.com:falcondai/gpt-2.git
+	url = https://github.com/falcondai/gpt-2.git
