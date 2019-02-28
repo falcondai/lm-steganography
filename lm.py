@@ -10,7 +10,7 @@ class LanguageModel:
         # Mapping from indices to tokens
         self.vocabulary = vocabulary
         # Inverse map from tokens to indices
-        self.vocabulary_index = {token: ind for ind, token in self.vocabulary}
+        self.vocabulary_index = {token: ind for ind, token in enumerate(self.vocabulary)}
         self.vocabulary_size = len(self.vocabulary)
 
     def p_next_token(self, prefix):

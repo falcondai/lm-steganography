@@ -1,7 +1,6 @@
 import numpy as np
 
 from huffman import build_min_heap, huffman_tree, tv_huffman, invert_code_tree
-from lm import LanguageModel
 
 
 class LmAdversary:
@@ -24,7 +23,7 @@ class Sender:
     plain_text - `cipher` -> cipher_text - `hide` -> stego_text
     '''
 
-    def __init__(self, lm, cipher_key, cipher, cipher_text_length, tv_threshold, seed=None):
+    def __init__(self, lm, cipher_key, cipher, cipher_text_length, tv_threshold, max_sequence_length, seed=None):
         self.cipher_key = cipher_key
         self.cipher = cipher
         self.lm = lm
@@ -32,6 +31,7 @@ class Sender:
         self.cipher_text_length = cipher_text_length
         self.random = np.random.RandomState(seed)
         self.acc_risk = 0
+        self.max_sequence_length = max_sequence_length
 
     def encrypt(self, plain_text):
         cipher_text = self.cipher(self.cipher_key, plain_text)
@@ -57,7 +57,7 @@ class Sender:
         prefix = [ind]
         p = self.lm.p_next_token(prefix)
         # Terminate the generation after we generate the EOS token
-        while len(prefix) == 1 or ind != self.lm.EOS_ind:
+        while len(prefix) == 1 or (len(prefix) < self.max_sequence_length and ind != self.lm.EOS_ind):
             # There is still some cipher text to hide
             le = len(coin_flips)
             if le > 0:
@@ -65,7 +65,8 @@ class Sender:
                 heap = build_min_heap(p)
                 hc = huffman_tree(heap)
                 # Check if the total variation is low enough
-                if tv_huffman(hc, p) < self.tv_threshold:
+                print(tv_huffman(hc, p))
+                if tv_huffman(hc, p)[0] < self.tv_threshold:
                     # Huffman-decode the cipher text into a token
                     # Consume the cipher text until a token is generated
                     decoder_state = hc
@@ -88,7 +89,7 @@ class Sender:
             prefix.append(ind)
             p = self.lm.p_next_token(prefix)
         # Drop the EOS index
-        return prefix[:1]
+        return prefix[1:]
 
 
 class Receiver:
@@ -129,12 +130,12 @@ class Receiver:
         cipher_text = []
         # Terminate the generation after we have consumed all indices or
         # have extracted all bits
-        while 0 < len(token_inds) or remaining_bits == 0:
+        while 0 < len(token_inds) and 0 < remaining_bits:
             # Build Huffman codes for the conditional distribution
             heap = build_min_heap(p)
             hc = huffman_tree(heap)
             # Check if the total variation is low enough
-            if tv_huffman(hc, p) < self.tv_threshold:
+            if tv_huffman(hc, p)[0] < self.tv_threshold:
                 # We have controlled this step. Some bits are hidden.
                 code = invert_code_tree(hc)
                 # Look up the Huffman code for the token.
@@ -142,8 +143,10 @@ class Receiver:
                 # Convert the Huffman code into bits
                 # left => 0, right => 1
                 cipher_text_fragment = [0 if bit == 'l' else 1 for bit in code[ind]]
-                cipher_text += cipher_text_fragment
+                # Truncate possible trailing paddings
+                cipher_text += cipher_text_fragment[:remaining_bits]
                 remaining_bits -= len(cipher_text_fragment)
+                print(remaining_bits)
                 prefix += [ind]
                 p = self.lm.p_next_token(prefix)
             else:
@@ -154,9 +157,31 @@ class Receiver:
 
 
 if __name__ == '__main__':
-    lm = LanguageModel(['<s>', '</s>', 'a', 'b'], 0, 1)
-    cipher_text_length = 128
-    tv_threshold = 0.5
+    from gptlm import GptLanguageModel
+    lm = GptLanguageModel()
+    cipher_text_length = 32
+    # tv_threshold = float('inf')
+    tv_threshold = 0.08
+
     alice = Sender(lm, None, None, cipher_text_length, tv_threshold, seed=123)
-    stego_text = alice.hide([0, 1, 0, 1, 1, 1, 0, 0])
-    print(stego_text)
+    bob = Receiver(lm, None, None, cipher_text_length, tv_threshold)
+
+    # sent_bits = list(np.random.choice(2, cipher_text_length))
+    sent_bits = [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0]
+    # sent_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0]
+    print(sent_bits)
+    stego_inds = alice.embed_bits(list(sent_bits))
+    msg = lm.enc.decode(stego_inds)
+
+    print(msg)
+
+    token_inds = lm.enc.encode(msg)
+    recovered_bits = bob.recover_bits(token_inds, cipher_text_length)
+    print(recovered_bits)
+
+    # Check
+    print(recovered_bits == sent_bits)
+    # stego_text = alice.hide(bits)
+    # print(stego_text)
+    # for seq in stego_text:
+    #     print(''.join(seq))

@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import fire
 import json
 import os
 import numpy as np
 import tensorflow as tf
+
+import encoder
+from lm import LanguageModel
 
 # import model, sample, encoder
 import importlib.util
 spec_model = importlib.util.spec_from_file_location("module.model", "./external/gpt-2/src/model.py")
 model = importlib.util.module_from_spec(spec_model)
 spec_model.loader.exec_module(model)
-import encoder
-from core import LanguageModel
 
 
 class GptLanguageModel(LanguageModel):
@@ -43,19 +43,28 @@ class GptLanguageModel(LanguageModel):
         ckpt = tf.train.latest_checkpoint(os.path.join(base_path, 'models', model_name))
         saver.restore(self.sess, ckpt)
 
+        self.EOS_ind = self.SOS
+        self.SOS_ind = self.SOS
+        self.vocabulary_index = self.enc.encoder
+        self.vocabulary = self.enc.decoder
+        self.vocabulary_size = self.hparams.n_vocab
+
     def p_next_token(self, prefix):
         # raw_text = prefix
         # if not raw_text:
         #     print('Prompt should not be empty!')
         #     raise ValueError("must have prefix tokens.")
         context_tokens = prefix
-        print('prefix', context_tokens)
+        # print('prefix', context_tokens)
         context_tk_reshape = np.asarray(context_tokens).reshape((self.batch_size, -1))
 
         out = self.sess.run(self.lm_output, feed_dict={
                 self.context: context_tk_reshape})
-        p_next_tk = out['logits']
-        return p_next_tk[0, -1]
+        logits = out['logits'][0, -1]
+        max_logit = logits.max()
+        p = np.exp(logits - max_logit)
+        p /= p.sum()
+        return p
 
     def perplexity(self, sentence):
         sos_padding = np.array([self.SOS for i in range(self.batch_size)]).reshape((self.batch_size, -1))
@@ -73,10 +82,7 @@ class GptLanguageModel(LanguageModel):
 
 
 if __name__ == '__main__':
-    def entropy(logits):
-        max_logit = logits.max()
-        p = np.exp(logits - max_logit)
-        p = p / p.sum()
+    def entropy(p):
         return -np.sum(p * np.log2(p))
 
     # Example
@@ -84,24 +90,26 @@ if __name__ == '__main__':
     prefix = [lm.SOS]
     logits = lm.p_next_token(prefix)
     print(logits)
-    i = logits.argmax()
-    print(logits[i], lm.enc.decoder[i])
+    inds = logits.argsort()[-10:]
+    print([lm.enc.decoder[i] for i in inds[::-1]])
     print(entropy(logits))
 
-    # High entropy for some prefixes
-    i_have_a_lot = lm.enc.encode('I have a lot')
+    # Low entropy for some prefixes
+    prefix = 'I have a lot'
+    i_have_a_lot = lm.enc.encode(prefix)
     logits = lm.p_next_token(i_have_a_lot)
-    print(logits.shape)
+    print(prefix)
     print(logits)
-    i = logits.argmax()
-    print(logits[i], lm.enc.decoder[i])
+    inds = logits.argsort()[-10:]
+    print([lm.enc.decoder[i] for i in inds[::-1]])
     print(entropy(logits))
 
-    # Low entropy for other prefixes
-    the_capital_of_us_is = lm.enc.encode('The capital of USA is')
-    logits = lm.p_next_token(the_capital_of_us_is)
-    print(logits.shape)
+    # High entropy for some other prefixes
+    prefix = 'I like your'
+    i_like_your = lm.enc.encode(prefix)
+    logits = lm.p_next_token(i_like_your)
+    print(prefix)
     print(logits)
-    i = logits.argmax()
-    print(logits[i], lm.enc.decoder[i])
+    inds = logits.argsort()[-10:]
+    print([lm.enc.decoder[i] for i in inds[::-1]])
     print(entropy(logits))
