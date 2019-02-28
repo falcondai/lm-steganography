@@ -23,7 +23,7 @@ class Sender:
     plain_text - `cipher` -> cipher_text - `hide` -> stego_text
     '''
 
-    def __init__(self, lm, cipher_key, cipher, cipher_text_length, tv_threshold, max_sequence_length, seed=None):
+    def __init__(self, lm, cipher_key, cipher, cipher_text_length, tv_threshold, max_sequence_length=80, seed=None):
         self.cipher_key = cipher_key
         self.cipher = cipher
         self.lm = lm
@@ -65,7 +65,7 @@ class Sender:
                 heap = build_min_heap(p)
                 hc = huffman_tree(heap)
                 # Check if the total variation is low enough
-                print(tv_huffman(hc, p))
+                print(len(prefix) - 1, tv_huffman(hc, p))
                 if tv_huffman(hc, p)[0] < self.tv_threshold:
                     # Huffman-decode the cipher text into a token
                     # Consume the cipher text until a token is generated
@@ -159,6 +159,7 @@ class Receiver:
 if __name__ == '__main__':
     from gptlm import GptLanguageModel
     lm = GptLanguageModel()
+    lm.enc.errors = 'strict'
     cipher_text_length = 32
     # tv_threshold = float('inf')
     tv_threshold = 0.08
@@ -171,6 +172,8 @@ if __name__ == '__main__':
     # sent_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0]
     print(sent_bits)
     stego_inds = alice.embed_bits(list(sent_bits))
+    for t, ind in enumerate(stego_inds):
+        print(t, ind, lm.enc.decoder[ind])
     msg = lm.enc.decode(stego_inds)
 
     print(msg)
