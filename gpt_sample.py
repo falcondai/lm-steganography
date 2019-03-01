@@ -5,7 +5,7 @@ from gptlm import GptLanguageModel
 
 def saving(path, data):
     with open(path, 'wb') as f:
-       numpy.save(f,data)
+       np.save(f,data)
 
 if __name__ == '__main__':
     # Example
