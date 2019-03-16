@@ -134,10 +134,12 @@ def decode(code_tree, encoded):
 
 
 if __name__ == '__main__':
-    v = 256 ** 2
+    # v = 256 ** 2
+    v = 5
     p = np.random.dirichlet([1] * v)
     print(sum(p))
     # p = [0.7, 0.1, 0.05, 0.1, 0.05]
+    p = [0.99] + [.01 / 4] * 4
     # heap = build_min_heap(p, [0, 1, 2, 4])
     heap = build_min_heap(p)
     # print(heap)
