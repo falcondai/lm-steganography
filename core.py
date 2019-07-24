@@ -65,7 +65,7 @@ class Sender:
                 heap = build_min_heap(p)
                 hc = huffman_tree(heap)
                 # Check if the total variation is low enough
-                print(len(prefix) - 1, tv_huffman(hc, p))
+                # print(len(prefix) - 1, tv_huffman(hc, p))
                 if tv_huffman(hc, p)[0] < self.tv_threshold:
                     # Huffman-decode the cipher text into a token
                     # Consume the cipher text until a token is generated
@@ -146,7 +146,7 @@ class Receiver:
                 # Truncate possible trailing paddings
                 cipher_text += cipher_text_fragment[:remaining_bits]
                 remaining_bits -= len(cipher_text_fragment)
-                print(remaining_bits)
+                # print(remaining_bits)
                 prefix += [ind]
                 p = self.lm.p_next_token(prefix)
             else:
@@ -160,16 +160,13 @@ if __name__ == '__main__':
     from gptlm import GptLanguageModel
     lm = GptLanguageModel()
     lm.enc.errors = 'strict'
-    cipher_text_length = 32
-    # tv_threshold = float('inf')
-    tv_threshold = 0.08
+    cipher_text_length = 16
+    tv_threshold = 0.1
 
-    alice = Sender(lm, None, None, cipher_text_length, tv_threshold, seed=123)
+    alice = Sender(lm, None, None, cipher_text_length, tv_threshold, max_sequence_length=10, seed=123)
     bob = Receiver(lm, None, None, cipher_text_length, tv_threshold)
 
-    # sent_bits = list(np.random.choice(2, cipher_text_length))
-    sent_bits = [1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0]
-    # sent_bits = [0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 1, 1, 0]
+    sent_bits = list(np.random.choice(2, cipher_text_length))
     print(sent_bits)
     stego_inds = alice.embed_bits(list(sent_bits))
     for t, ind in enumerate(stego_inds):
@@ -184,7 +181,3 @@ if __name__ == '__main__':
 
     # Check
     print(recovered_bits == sent_bits)
-    # stego_text = alice.hide(bits)
-    # print(stego_text)
-    # for seq in stego_text:
-    #     print(''.join(seq))
