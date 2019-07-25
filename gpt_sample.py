@@ -29,7 +29,7 @@ if __name__ == '__main__':
             logits_seq[t] = np.array(logits)
         
         index_set.append(prefix)
-        sample_set.append([lm.enc.decoder[i] for i in prefix])
+        sample_set.append(lm.enc.decode(prefix))
         logits_set.append(logits_seq)
 
     saving("./samples/sample_sents_idxs.npy", np.asarray(index_set))
