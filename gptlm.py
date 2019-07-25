@@ -95,9 +95,9 @@ if __name__ == '__main__':
     print(entropy(logits))
 
     # Low entropy for some prefixes
-    prefix = 'I have a lot'
-    i_have_a_lot = lm.enc.encode(prefix)
-    logits = lm.p_next_token(i_have_a_lot)
+    prefix = 'It is on top'
+    it_is_on_top = lm.enc.encode(prefix)
+    logits = lm.p_next_token(it_is_on_top)
     print(prefix)
     print(logits)
     inds = logits.argsort()[-10:]
