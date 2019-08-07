@@ -12,6 +12,7 @@ The steganographic systems we studied assume a cryptographic system that produce
 - [`core.py`](https://github.com/falcondai/lm-steganography/blob/master/core.py) contains an illustrative minimal working example of the encoding/decoding of the stegosystem.
 - You may need `GPT-2` (included as a git submodule) and the publicly released `GPT-2-117M` language model to generate stegotext.
 - [This method](https://github.com/falcondai/lm-steganography/blob/master/core.py#L52) implements the `patient-Huffman` encoding algorithm. And its corresponding [decoding method](https://github.com/falcondai/lm-steganography/blob/master/core.py#L126).
+- `samples/` directory contains 20 samples generated using `patient-Huffman` (imperceptibility parameter of 0.08, and random bitstrings of length 32) and 20 samples from the base language model. This is to provide a subjective sense of the imperceptibility offered by the algorithm by comparing the controlled samples to the uncontrolled (standard sampling) samples.
 - [This notebook](https://github.com/falcondai/lm-steganography/blob/master/entropy.ipynb) contains the plots and empirical analysis.
 
 ## Replication
