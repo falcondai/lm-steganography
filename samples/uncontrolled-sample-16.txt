@@ -1,0 +1,7 @@
+jmath
+
+libNamedActor
+
+Combat Actor goes:
+
+Let's imagine that you were working on an octopus character. You and him encounter some creatures near an observation bridge.
